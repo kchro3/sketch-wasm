@@ -1,5 +1,8 @@
 use wasm_bindgen::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, BinaryHeap};
+use std::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
+use std::cmp::Reverse;
 
 #[wasm_bindgen]
 pub struct TopKItem {
@@ -25,6 +28,27 @@ impl TopKItem {
     }
 }
 
+// Internal struct for min-heap operations
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct HeapItem {
+    item: String,
+    count: u32,
+}
+
+impl PartialOrd for HeapItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HeapItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // For min-heap: smaller counts come first
+        self.count.cmp(&other.count)
+            .then_with(|| self.item.cmp(&other.item)) // Tie-breaker for deterministic ordering
+    }
+}
+
 #[wasm_bindgen]
 pub struct HeavyKeeper {
     width: usize,
@@ -32,6 +56,11 @@ pub struct HeavyKeeper {
     k: usize,
     decay: f64,
     counters: Vec<Vec<(String, u32)>>,
+    hash_seeds: Vec<u64>,
+    // Min-heap to maintain top-k items efficiently
+    top_k_heap: BinaryHeap<Reverse<HeapItem>>,
+    // Track all seen items for accurate counting
+    all_counts: HashMap<String, u32>,
 }
 
 #[wasm_bindgen]
@@ -39,12 +68,15 @@ impl HeavyKeeper {
     #[wasm_bindgen(constructor)]
     pub fn new(width: usize, depth: usize, k: usize, decay: f64) -> Self {
         let mut counters = Vec::with_capacity(depth);
-        for _ in 0..depth {
+        let mut hash_seeds = Vec::with_capacity(depth);
+        
+        for i in 0..depth {
             let mut row = Vec::with_capacity(width);
             for _ in 0..width {
                 row.push((String::new(), 0));
             }
             counters.push(row);
+            hash_seeds.push(i as u64);
         }
 
         HeavyKeeper {
@@ -53,20 +85,63 @@ impl HeavyKeeper {
             k,
             decay,
             counters,
+            hash_seeds,
+            top_k_heap: BinaryHeap::new(),
+            all_counts: HashMap::new(),
         }
     }
 
     fn hash(&self, item: &str, seed: u64) -> usize {
-        let mut hash: u64 = seed;
-        for &byte in item.as_bytes() {
-            hash = hash.wrapping_mul(31).wrapping_add(byte as u64);
+        let mut hasher = DefaultHasher::new();
+        item.hash(&mut hasher);
+        seed.hash(&mut hasher);
+        (hasher.finish() as usize) % self.width
+    }
+
+    fn update_top_k(&mut self, item: &str, count: u32) {
+        // Update the aggregated count
+        self.all_counts.insert(item.to_string(), count);
+        
+        // Check if item is already in heap
+        let mut found_in_heap = false;
+        let heap_items: Vec<_> = self.top_k_heap.drain().collect();
+        
+        for Reverse(heap_item) in heap_items {
+            if heap_item.item == item {
+                // Update existing item in heap
+                self.top_k_heap.push(Reverse(HeapItem {
+                    item: item.to_string(),
+                    count,
+                }));
+                found_in_heap = true;
+            } else {
+                // Keep other items
+                self.top_k_heap.push(Reverse(heap_item));
+            }
         }
-        (hash % self.width as u64) as usize
+        
+        if !found_in_heap {
+            // New item - add to heap
+            if self.top_k_heap.len() < self.k {
+                self.top_k_heap.push(Reverse(HeapItem {
+                    item: item.to_string(),
+                    count,
+                }));
+            } else if let Some(Reverse(min_item)) = self.top_k_heap.peek() {
+                if count > min_item.count {
+                    self.top_k_heap.pop(); // Remove minimum
+                    self.top_k_heap.push(Reverse(HeapItem {
+                        item: item.to_string(),
+                        count,
+                    }));
+                }
+            }
+        }
     }
 
     pub fn add(&mut self, item: &str) {
         for i in 0..self.depth {
-            let pos = self.hash(item, i as u64);
+            let pos = self.hash(item, self.hash_seeds[i]);
             let counter = &mut self.counters[i][pos];
             
             if counter.0.is_empty() {
@@ -77,7 +152,7 @@ impl HeavyKeeper {
             } else {
                 // Decay the counter with probability decay
                 if js_sys::Math::random() < self.decay {
-                    counter.1 -= 1;
+                    counter.1 = counter.1.saturating_sub(1);
                     if counter.1 == 0 {
                         counter.0 = item.to_string();
                         counter.1 = 1;
@@ -85,13 +160,19 @@ impl HeavyKeeper {
                 }
             }
         }
+        
+        // Update top-k with current estimated count
+        let estimated_count = self.query(item);
+        if estimated_count > 0 {
+            self.update_top_k(item, estimated_count);
+        }
     }
 
     pub fn query(&self, item: &str) -> u32 {
         let mut min_count = u32::MAX;
         
         for i in 0..self.depth {
-            let pos = self.hash(item, i as u64);
+            let pos = self.hash(item, self.hash_seeds[i]);
             let counter = &self.counters[i][pos];
             
             if counter.0 == item {
@@ -107,7 +188,8 @@ impl HeavyKeeper {
     }
 
     pub fn top_k(&self) -> Vec<TopKItem> {
-        let mut counts = HashMap::new();
+        // For accuracy, we still need to aggregate all counts to handle hash collisions
+        let mut counts = HashMap::with_capacity(self.width);
         
         // Aggregate counts across all hash functions
         for row in &self.counters {
@@ -118,14 +200,28 @@ impl HeavyKeeper {
             }
         }
         
-        // Convert to vector and sort by count
-        let mut items: Vec<TopKItem> = counts.into_iter()
-            .map(|(item, count)| TopKItem::new(item, count))
-            .collect();
-        items.sort_by(|a, b| b.count.cmp(&a.count));
+        // Use min-heap for efficient top-k selection
+        let mut heap = BinaryHeap::new();
         
-        // Return top k items
-        items.truncate(self.k);
+        for (item, count) in counts {
+            if heap.len() < self.k {
+                heap.push(Reverse(HeapItem { item, count }));
+            } else if let Some(Reverse(min_item)) = heap.peek() {
+                if count > min_item.count {
+                    heap.pop();
+                    heap.push(Reverse(HeapItem { item, count }));
+                }
+            }
+        }
+        
+        // Convert heap to sorted vector (largest first)
+        let mut items: Vec<TopKItem> = heap.into_iter()
+            .map(|Reverse(heap_item)| TopKItem::new(heap_item.item, heap_item.count))
+            .collect();
+        
+        // Sort in descending order by count
+        items.sort_unstable_by(|a, b| b.count.cmp(&a.count));
+        
         items
     }
 }
@@ -213,5 +309,28 @@ mod tests {
         for i in 1..top.len() {
             assert!(top[i-1].count >= top[i].count);
         }
+    }
+
+    #[test]
+    fn test_min_heap_efficiency() {
+        let mut hk = HeavyKeeper::new(100, 3, 5, 0.9);
+        
+        // Add many items with different frequencies
+        for i in 0..20 {
+            for _ in 0..(20 - i) {
+                hk.add(&format!("item{}", i));
+            }
+        }
+        
+        let top = hk.top_k();
+        assert_eq!(top.len(), 5);
+        
+        // Verify ordering
+        for i in 1..top.len() {
+            assert!(top[i-1].count >= top[i].count);
+        }
+        
+        // The most frequent items should be at the top
+        assert!(top[0].item == "item0" || top[0].count >= 15);
     }
 } 

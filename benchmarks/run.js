@@ -383,12 +383,24 @@ async function runBenchmarks() {
 
   console.log('Heavy Keeper Configuration:');
   console.log(`Width: ${width}, Depth: ${depth}, K: ${k}, Decay: ${decay}\n`);
-
-  // Generate test data with known frequencies
+  // Generate test data with Zipfian/power-law distribution
   const hkFrequencyItems = [];
-  for (let i = 0; i < 1000; i++) {
+  const numItems = 1000;
+  const s = 1.5; // Zipf parameter (s > 1 for proper power law)
+
+  // Calculate Zipfian frequencies
+  const zipfFrequencies = [];
+  let totalFreq = 0;
+  for (let i = 1; i <= numItems; i++) {
+    const freq = Math.floor(1000 / Math.pow(i, s)); // Scale base frequency
+    zipfFrequencies.push(Math.max(1, freq)); // Ensure minimum frequency of 1
+    totalFreq += zipfFrequencies[i - 1];
+  }
+
+  // Generate items according to Zipfian distribution
+  for (let i = 0; i < numItems; i++) {
     const item = `item${i}`;
-    const frequency = Math.floor(Math.random() * 100) + 1;
+    const frequency = zipfFrequencies[i];
     for (let j = 0; j < frequency; j++) {
       hkFrequencyItems.push(item);
     }
@@ -399,6 +411,10 @@ async function runBenchmarks() {
     const j = Math.floor(Math.random() * (i + 1));
     [hkFrequencyItems[i], hkFrequencyItems[j]] = [hkFrequencyItems[j], hkFrequencyItems[i]];
   }
+
+  console.log(`Generated ${hkFrequencyItems.length} items with Zipfian distribution (s=${s})`);
+  console.log(`Most frequent item appears ${zipfFrequencies[0]} times`);
+  console.log(`Least frequent items appear ${zipfFrequencies[numItems - 1]} times`);
 
   // Clear memory before HK benchmarking
   if (global.gc) {
