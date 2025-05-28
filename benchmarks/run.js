@@ -1,5 +1,5 @@
 const { performance } = require('perf_hooks');
-const { BloomFilter, CountMinSketch, HyperLogLog } = require('../pkg/sketch_wasm');
+const { BloomFilter, CountMinSketch, HyperLogLog, HeavyKeeper } = require('../pkg/sketch_wasm');
 const { BloomFilter: JSBloomFilter, CountMinSketch: JSCountMinSketch, HyperLogLog: JSHyperLogLog } = require('bloom-filters');
 
 function measureMemory() {
@@ -300,6 +300,167 @@ async function runBenchmarks() {
   console.log('- Memory measurements include baseline overhead');
   console.log('- Run with --expose-gc for more accurate memory measurements');
   console.log('- Note: Different hash functions may still affect performance/accuracy');
+
+  // Heavy Keeper benchmarks
+  console.log('\nHeavy Keeper Benchmarks:');
+  console.log('----------------------');
+
+  // Initialize Heavy Keeper with parameters for fair comparison
+  const width = 1000;
+  const depth = 5;
+  const k = 10;
+  const decay = 0.9;
+  const wasmHk = new HeavyKeeper(width, depth, k, decay);
+
+  // Create a simple JS implementation for comparison
+  class JSHeavyKeeper {
+    constructor(width, depth, k, decay) {
+      this.width = width;
+      this.depth = depth;
+      this.k = k;
+      this.decay = decay;
+      this.counters = Array(depth).fill().map(() =>
+        Array(width).fill().map(() => ({ item: '', count: 0 }))
+      );
+    }
+
+    hash(item, seed) {
+      let hash = seed;
+      for (let i = 0; i < item.length; i++) {
+        hash = ((hash * 31) + item.charCodeAt(i)) >>> 0;
+      }
+      return hash % this.width;
+    }
+
+    add(item) {
+      for (let i = 0; i < this.depth; i++) {
+        const pos = this.hash(item, i);
+        const counter = this.counters[i][pos];
+
+        if (!counter.item) {
+          counter.item = item;
+          counter.count = 1;
+        } else if (counter.item === item) {
+          counter.count++;
+        } else if (Math.random() < this.decay) {
+          counter.count--;
+          if (counter.count === 0) {
+            counter.item = item;
+            counter.count = 1;
+          }
+        }
+      }
+    }
+
+    query(item) {
+      let minCount = Infinity;
+      for (let i = 0; i < this.depth; i++) {
+        const pos = this.hash(item, i);
+        const counter = this.counters[i][pos];
+        if (counter.item === item) {
+          minCount = Math.min(minCount, counter.count);
+        }
+      }
+      return minCount === Infinity ? 0 : minCount;
+    }
+
+    topK() {
+      const counts = new Map();
+      for (const row of this.counters) {
+        for (const { item, count } of row) {
+          if (item) {
+            counts.set(item, (counts.get(item) || 0) + count);
+          }
+        }
+      }
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, this.k);
+    }
+  }
+
+  const jsHk = new JSHeavyKeeper(width, depth, k, decay);
+
+  console.log('Heavy Keeper Configuration:');
+  console.log(`Width: ${width}, Depth: ${depth}, K: ${k}, Decay: ${decay}\n`);
+
+  // Generate test data with known frequencies
+  const hkFrequencyItems = [];
+  for (let i = 0; i < 1000; i++) {
+    const item = `item${i}`;
+    const frequency = Math.floor(Math.random() * 100) + 1;
+    for (let j = 0; j < frequency; j++) {
+      hkFrequencyItems.push(item);
+    }
+  }
+
+  // Shuffle items for realistic access pattern
+  for (let i = hkFrequencyItems.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [hkFrequencyItems[i], hkFrequencyItems[j]] = [hkFrequencyItems[j], hkFrequencyItems[i]];
+  }
+
+  // Clear memory before HK benchmarking
+  if (global.gc) {
+    global.gc();
+  }
+
+  // Measure baseline memory for HK
+  const hkBaselineMemory = measureMemory();
+  console.log('HK Baseline memory:', hkBaselineMemory);
+
+  // WASM Add performance test
+  const wasmHkStart = performance.now();
+  hkFrequencyItems.forEach(item => wasmHk.add(item));
+  const wasmHkAddTime = performance.now() - wasmHkStart;
+
+  // JS Add performance test
+  const jsHkStart = performance.now();
+  hkFrequencyItems.forEach(item => jsHk.add(item));
+  const jsHkAddTime = performance.now() - jsHkStart;
+
+  console.log('\nAdd Performance:');
+  console.log(`WASM: ${wasmHkAddTime.toFixed(2)}ms`);
+  console.log(`JS: ${jsHkAddTime.toFixed(2)}ms`);
+  console.log(`Speedup: ${(jsHkAddTime / wasmHkAddTime).toFixed(2)}x`);
+  console.log(`Average time per add:`);
+  console.log(`  WASM: ${(wasmHkAddTime / hkFrequencyItems.length).toFixed(3)}ms`);
+  console.log(`  JS: ${(jsHkAddTime / hkFrequencyItems.length).toFixed(3)}ms`);
+
+  // Memory usage after adds
+  const afterHkMemory = measureMemory();
+  console.log('\nMemory after HK adds:', afterHkMemory);
+
+  // Top-K performance test
+  const wasmHkTopKStart = performance.now();
+  const wasmTopK = wasmHk.top_k();
+  const wasmHkTopKTime = performance.now() - wasmHkTopKStart;
+
+  const jsHkTopKStart = performance.now();
+  const jsTopK = jsHk.topK();
+  const jsHkTopKTime = performance.now() - jsHkTopKStart;
+
+  console.log('\nTop-K Performance:');
+  console.log(`WASM: ${wasmHkTopKTime.toFixed(2)}ms`);
+  console.log(`JS: ${jsHkTopKTime.toFixed(2)}ms`);
+  console.log(`Speedup: ${(jsHkTopKTime / wasmHkTopKTime).toFixed(2)}x`);
+
+  // Verify both implementations have similar behavior
+  console.log('\nHK Accuracy Check:');
+  console.log('WASM Top-K:', wasmTopK.map(item => `${item.item}: ${item.count}`).join(', '));
+  console.log('JS Top-K:', jsTopK.map(([item, count]) => `${item}: ${count}`).join(', '));
+  console.log('Note: Both implementations should track similar top items');
+
+  // Compare memory usage
+  console.log('\nMemory Usage Comparison:');
+  console.log(`Heavy Keeper (width=${width}, depth=${depth}): ${(width * depth * 8 / 1024).toFixed(2)}KB`);
+
+  // Note about benchmark fairness
+  console.log('\nBenchmark Notes:');
+  console.log('- Both implementations use identical parameters');
+  console.log('- JS implementation is a direct port of the WASM version');
+  console.log('- Memory measurements include baseline overhead');
+  console.log('- Run with --expose-gc for more accurate memory measurements');
 }
 
 runBenchmarks().catch(console.error);
