@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Probabilistic data structures for TypeScript/Node.js via WebAssembly"
 license = "MIT"
+repository = "https://github.com/kchro3/sketch-wasm"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

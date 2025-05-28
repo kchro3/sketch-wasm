@@ -1,11 +1,13 @@
 use wasm_bindgen::prelude::*;
 
 mod bloom;
-// mod hyperloglog;
+mod hyperloglog;
 mod count_min_sketch;
 // mod approx_top_k;
 
+pub use bloom::BloomFilter;
 pub use count_min_sketch::CountMinSketch;
+pub use hyperloglog::HyperLogLog;
 
 #[wasm_bindgen]
 extern "C" {

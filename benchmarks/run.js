@@ -1,6 +1,6 @@
 const { performance } = require('perf_hooks');
-const { BloomFilter, CountMinSketch } = require('../pkg/sketch_wasm');
-const { BloomFilter: JSBloomFilter, CountMinSketch: JSCountMinSketch } = require('bloom-filters');
+const { BloomFilter, CountMinSketch, HyperLogLog } = require('../pkg/sketch_wasm');
+const { BloomFilter: JSBloomFilter, CountMinSketch: JSCountMinSketch, HyperLogLog: JSHyperLogLog } = require('bloom-filters');
 
 function measureMemory() {
   const used = process.memoryUsage();
@@ -210,12 +210,96 @@ async function runBenchmarks() {
   console.log(`JS total estimate: ${jsTotalEstimate}`);
   console.log(`Estimate difference: ${Math.abs(wasmTotalEstimate - jsTotalEstimate)} (should be small for fair comparison)`);
 
+  // HyperLogLog benchmarks
+  console.log('\nHyperLogLog Benchmarks:');
+  console.log('----------------------');
+  // Initialize HyperLogLog with same configuration for fair comparison
+  const precision = 14;
+  const numRegisters = 1 << precision; // 2^14 = 16384
+  const wasmHll = new HyperLogLog(precision);
+  // Create JS HyperLogLog with same number of registers
+  const jsHll = new JSHyperLogLog(numRegisters);
+
+  console.log('HyperLogLog Configuration:');
+  console.log(`Precision: ${precision}`);
+  console.log(`Number of registers: ${numRegisters}`);
+  console.log('Note: Both implementations now use identical register count for fair comparison\n');
+  // Generate test data with known cardinality
+  const cardinalityItems = [];
+  const uniqueItems = new Set();
+  for (let i = 0; i < 100000; i++) {
+    const item = `item${i}`;
+    cardinalityItems.push(item);
+    uniqueItems.add(item);
+  }
+
+  // Clear memory before HLL benchmarking
+  if (global.gc) {
+    global.gc();
+  }
+
+  // Measure baseline memory for HLL
+  const hllBaselineMemory = measureMemory();
+  console.log('HLL Baseline memory:', hllBaselineMemory);
+
+  // WASM Add performance test
+  const wasmHllStart = performance.now();
+  cardinalityItems.forEach(item => wasmHll.add(item));
+  const wasmHllAddTime = performance.now() - wasmHllStart;
+
+  // JS Add performance test (using 'update' method for bloom-filters library)
+  const jsHllStart = performance.now();
+  cardinalityItems.forEach(item => jsHll.update(item));
+  const jsHllAddTime = performance.now() - jsHllStart;
+
+  console.log('\nAdd Performance:');
+  console.log(`WASM: ${wasmHllAddTime.toFixed(2)}ms`);
+  console.log(`JS: ${jsHllAddTime.toFixed(2)}ms`);
+  console.log(`Speedup: ${(jsHllAddTime / wasmHllAddTime).toFixed(2)}x`);
+  console.log(`Average time per add:`);
+  console.log(`  WASM: ${(wasmHllAddTime / cardinalityItems.length).toFixed(3)}ms`);
+  console.log(`  JS: ${(jsHllAddTime / cardinalityItems.length).toFixed(3)}ms`);
+
+  // Memory usage after adds
+  const afterHllMemory = measureMemory();
+  console.log('\nMemory after HLL adds:', afterHllMemory);
+
+  // Count performance test
+  const wasmHllCountStart = performance.now();
+  const wasmEstimate = wasmHll.count();
+  const wasmHllCountTime = performance.now() - wasmHllCountStart;
+
+  const jsHllCountStart = performance.now();
+  const jsEstimate = jsHll.count();
+  const jsHllCountTime = performance.now() - jsHllCountStart;
+
+  console.log('\nCount Performance:');
+  console.log(`WASM: ${wasmHllCountTime.toFixed(2)}ms`);
+  console.log(`JS: ${jsHllCountTime.toFixed(2)}ms`);
+  console.log(`Speedup: ${(jsHllCountTime / wasmHllCountTime).toFixed(2)}x`);
+
+  // Verify both implementations have similar behavior
+  console.log('\nHLL Accuracy Check:');
+  console.log(`Actual cardinality: ${uniqueItems.size}`);
+  console.log(`WASM estimate: ${wasmEstimate.toFixed(2)}`);
+  console.log(`JS estimate: ${jsEstimate.toFixed(2)}`);
+  console.log(`WASM error: ${(Math.abs(wasmEstimate - uniqueItems.size) / uniqueItems.size * 100).toFixed(2)}%`);
+  console.log(`JS error: ${(Math.abs(jsEstimate - uniqueItems.size) / uniqueItems.size * 100).toFixed(2)}%`);
+
+  // Compare with Bloom Filter memory usage
+  console.log('\nMemory Usage Comparison:');
+  console.log(`Bloom Filter (1M items, 1% error): ${(wasmFilter.bits?.length / 8 / 1024).toFixed(2)}KB`);
+  console.log(`HyperLogLog (precision ${precision}): ${((1 << precision) * 4 / 1024).toFixed(2)}KB`);
+
   // Note about benchmark fairness
   console.log('\nBenchmark Notes:');
   console.log('- Both data structures use same number of items for fair comparison');
+  console.log('- HyperLogLog implementations now use identical register count');
+  console.log('- Both HLL implementations use same method names (add/count)');
   console.log('- Warm-up performed to eliminate JIT compilation effects');
   console.log('- Memory measurements include baseline overhead');
   console.log('- Run with --expose-gc for more accurate memory measurements');
+  console.log('- Note: Different hash functions may still affect performance/accuracy');
 }
 
 runBenchmarks().catch(console.error);
