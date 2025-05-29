@@ -2,7 +2,10 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use wasm_bindgen::prelude::*;
 
+/// A probabilistic data structure for counting the frequency of events in a data stream.
+/// It uses a small amount of memory while providing approximate frequency estimates.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct CountMinSketch {
     width: usize,
     depth: usize,
@@ -12,6 +15,12 @@ pub struct CountMinSketch {
 
 #[wasm_bindgen]
 impl CountMinSketch {
+    /// Creates a new Count-Min Sketch with the specified width and depth.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - The number of counters in each row
+    /// * `depth` - The number of hash functions (rows)
     #[wasm_bindgen(constructor)]
     pub fn new(width: usize, depth: usize) -> CountMinSketch {
         let mut hash_seeds = Vec::with_capacity(depth);
@@ -36,6 +45,11 @@ impl CountMinSketch {
         (hasher.finish() as usize) % self.width
     }
 
+    /// Increments the count for an item.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to increment
     #[wasm_bindgen]
     pub fn increment(&mut self, item: &str) {
         for i in 0..self.depth {
@@ -44,6 +58,11 @@ impl CountMinSketch {
         }
     }
 
+    /// Returns the estimated frequency of an item.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to query
     #[wasm_bindgen]
     pub fn estimate(&self, item: &str) -> u32 {
         let mut min_count = u32::MAX;
@@ -54,6 +73,7 @@ impl CountMinSketch {
         min_count
     }
 
+    /// Clears all counters in the sketch.
     #[wasm_bindgen]
     pub fn clear(&mut self) {
         for row in &mut self.counters {

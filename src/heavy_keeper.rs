@@ -4,7 +4,9 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use std::cmp::Reverse;
 
+/// Represents an item and its count in the Heavy Keeper data structure.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct TopKItem {
     item: String,
     count: u32,
@@ -12,16 +14,24 @@ pub struct TopKItem {
 
 #[wasm_bindgen]
 impl TopKItem {
+    /// Creates a new TopKItem.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item string
+    /// * `count` - The item's count
     #[wasm_bindgen(constructor)]
     pub fn new(item: String, count: u32) -> Self {
-        TopKItem { item, count }
+        Self { item, count }
     }
 
+    /// Returns the item string.
     #[wasm_bindgen(getter)]
     pub fn item(&self) -> String {
         self.item.clone()
     }
 
+    /// Returns the item's count.
     #[wasm_bindgen(getter)]
     pub fn count(&self) -> u32 {
         self.count
@@ -49,7 +59,10 @@ impl Ord for HeapItem {
     }
 }
 
+/// A probabilistic data structure for finding the top-k most frequent items in a data stream.
+/// It uses a small amount of memory while providing approximate frequency estimates.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct HeavyKeeper {
     width: usize,
     depth: usize,
@@ -65,6 +78,14 @@ pub struct HeavyKeeper {
 
 #[wasm_bindgen]
 impl HeavyKeeper {
+    /// Creates a new Heavy Keeper instance with the specified parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `width` - The number of counters in each row
+    /// * `depth` - The number of hash functions (rows)
+    /// * `k` - The number of top items to track
+    /// * `decay` - The decay factor for count reduction (between 0 and 1)
     #[wasm_bindgen(constructor)]
     pub fn new(width: usize, depth: usize, k: usize, decay: f64) -> Self {
         let mut counters = Vec::with_capacity(depth);
@@ -139,6 +160,12 @@ impl HeavyKeeper {
         }
     }
 
+    /// Adds an item to the Heavy Keeper.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to add
+    #[wasm_bindgen]
     pub fn add(&mut self, item: &str) {
         for i in 0..self.depth {
             let pos = self.hash(item, self.hash_seeds[i]);
@@ -168,6 +195,12 @@ impl HeavyKeeper {
         }
     }
 
+    /// Returns the estimated frequency of an item.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to query
+    #[wasm_bindgen]
     pub fn query(&self, item: &str) -> u32 {
         let mut min_count = u32::MAX;
         
@@ -187,6 +220,8 @@ impl HeavyKeeper {
         }
     }
 
+    /// Returns the top-k most frequent items.
+    #[wasm_bindgen]
     pub fn top_k(&self) -> Vec<TopKItem> {
         // For accuracy, we still need to aggregate all counts to handle hash collisions
         let mut counts = HashMap::with_capacity(self.width);

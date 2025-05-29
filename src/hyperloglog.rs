@@ -1,6 +1,9 @@
 use wasm_bindgen::prelude::*;
 
+/// A probabilistic data structure for counting the number of distinct elements in a set.
+/// It uses a small amount of memory while providing an estimate of the cardinality.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct HyperLogLog {
     registers: Vec<u8>,
     m: usize,
@@ -10,6 +13,11 @@ pub struct HyperLogLog {
 
 #[wasm_bindgen]
 impl HyperLogLog {
+    /// Creates a new HyperLogLog instance with the specified precision.
+    ///
+    /// # Arguments
+    ///
+    /// * `precision` - The precision parameter (between 4 and 16). Higher precision means more accurate results but more memory usage.
     #[wasm_bindgen(constructor)]
     pub fn new(precision: Option<u8>) -> Result<HyperLogLog, JsValue> {
         let p = precision.unwrap_or(14);
@@ -64,6 +72,12 @@ impl HyperLogLog {
         h1
     }
     
+    /// Adds an item to the HyperLogLog counter.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The item to add
+    #[wasm_bindgen]
     pub fn add(&mut self, value: &str) {
         let hash = self.hash(value);
         let index = (hash & ((self.m - 1) as u32)) as usize; // Get first p bits
@@ -78,6 +92,8 @@ impl HyperLogLog {
         self.registers[index] = self.registers[index].max(leading_zeros);
     }
     
+    /// Returns the estimated number of distinct items in the set.
+    #[wasm_bindgen]
     pub fn count(&self) -> f64 {
         // Calculate raw estimate
         let sum: f64 = self.registers
@@ -110,6 +126,13 @@ impl HyperLogLog {
         estimate.round()
     }
     
+    /// Merges another HyperLogLog instance into this one.
+    /// Both instances must have the same precision.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The HyperLogLog instance to merge with
+    #[wasm_bindgen]
     pub fn merge(&mut self, other: &HyperLogLog) -> Result<(), JsValue> {
         if self.m != other.m {
             return Err(JsValue::from_str("Cannot merge HyperLogLog instances with different precision"));
@@ -122,6 +145,8 @@ impl HyperLogLog {
         Ok(())
     }
     
+    /// Clears all counters in the HyperLogLog instance.
+    #[wasm_bindgen]
     pub fn clear(&mut self) {
         self.registers.fill(0);
     }

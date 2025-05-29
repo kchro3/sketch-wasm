@@ -1,6 +1,6 @@
 [package]
 name = "sketch-wasm"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 description = "Probabilistic data structures for TypeScript/Node.js via WebAssembly"
 license = "MIT"
@@ -26,3 +26,21 @@ criterion = "0.5"
 [profile.release]
 opt-level = 3
 lto = true
+
+[profile.dev]
+opt-level = 0
+
+[profile.test]
+opt-level = 0
+
+[lints.rust]
+unsafe_code = "warn"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+missing_copy_implementations = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unused_imports = "warn"
+unused_must_use = "warn"
+unused_mut = "warn"
+unused_variables = "warn"

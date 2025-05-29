@@ -1,3 +1,10 @@
+//! A high-performance WebAssembly implementation of probabilistic data structures.
+//! This library provides efficient implementations of:
+//! - Bloom Filters
+//! - Count-Min Sketch
+//! - HyperLogLog
+//! - Heavy Keeper (Approximate Top-K)
+
 use wasm_bindgen::prelude::*;
 
 mod bloom;
@@ -17,6 +24,8 @@ extern "C" {
     fn log(s: &str);
 }
 
+/// Initialize the WebAssembly module.
+/// This function should be called before using any of the data structures.
 #[wasm_bindgen]
 pub fn init() {
     log("Initializing sketch-wasm...");

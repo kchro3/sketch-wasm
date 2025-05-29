@@ -1,6 +1,6 @@
 {
   "name": "sketch-wasm",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Probabilistic data structures for TypeScript/Node.js via WebAssembly",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,13 +10,21 @@
   ],
   "scripts": {
     "build": "wasm-pack build --target nodejs && tsc",
-    "prepare": "npm run build",
+    "prepare": "husky install && npm run build",
     "prepublishOnly": "npm test",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "bench": "node benchmarks/run.js",
-    "clean": "rm -rf dist pkg target"
+    "clean": "rm -rf dist pkg target",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "dev": "npm run build && npm run test:watch",
+    "check": "npm run lint && npm run format:check && npm test",
+    "check:fix": "npm run lint:fix && npm run format",
+    "precommit": "npm run check"
   },
   "keywords": [
     "wasm",
@@ -46,11 +54,19 @@
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "bloom-filters": "^3.0.4",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.0",
     "jest": "^29.5.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.0",
-    "wasm-pack": "^0.12.0"
+    "wasm-pack": "^0.0.0"
   },
   "jest": {
     "preset": "ts-jest",
@@ -66,6 +82,15 @@
     },
     "setupFiles": [
       "<rootDir>/tests/setup.ts"
+    ]
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
     ]
   }
 }

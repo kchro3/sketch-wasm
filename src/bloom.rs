@@ -2,7 +2,10 @@ use wasm_bindgen::prelude::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+/// A space-efficient probabilistic data structure that is used to test whether an element is a member of a set.
+/// False positives are possible, but false negatives are not.
 #[wasm_bindgen]
+#[derive(Debug)]
 pub struct BloomFilter {
     bits: Vec<bool>,
     hash_count: usize,
@@ -10,6 +13,12 @@ pub struct BloomFilter {
 
 #[wasm_bindgen]
 impl BloomFilter {
+    /// Creates a new Bloom filter with the specified expected number of items and false positive rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `expected_items` - The expected number of items to be inserted
+    /// * `false_positive_rate` - The desired false positive rate (between 0 and 1)
     #[wasm_bindgen(constructor)]
     pub fn new(expected_items: usize, false_positive_rate: f64) -> BloomFilter {
         let size = Self::optimal_size(expected_items, false_positive_rate);
@@ -21,6 +30,12 @@ impl BloomFilter {
         }
     }
 
+    /// Inserts an item into the Bloom filter.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to insert
+    #[wasm_bindgen]
     pub fn insert(&mut self, item: &str) {
         for i in 0..self.hash_count {
             let index = self.get_hash(item, i) % self.bits.len();
@@ -28,6 +43,13 @@ impl BloomFilter {
         }
     }
 
+    /// Checks if an item might be in the set.
+    /// Returns true if the item is probably in the set, false if it is definitely not.
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - The item to check
+    #[wasm_bindgen]
     pub fn contains(&self, item: &str) -> bool {
         for i in 0..self.hash_count {
             let index = self.get_hash(item, i) % self.bits.len();

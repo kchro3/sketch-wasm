@@ -1,4 +1,8 @@
-/target
-/node_modules
-/pkg
-/dist
+node_modules/
+dist/
+pkg/
+target/
+.DS_Store
+*.log
+.eslintcache
+.prettiercache
