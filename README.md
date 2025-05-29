@@ -60,38 +60,38 @@ npm install sketch-wasm
 ### Bloom Filter
 
 ```typescript
-import { BloomFilter } from "sketch-wasm";
+import { BloomFilter } from 'sketch-wasm';
 
 // Create a Bloom filter with expected 1M items and 1% false positive rate
 const filter = new BloomFilter(1_000_000, 0.01);
 
 // Insert items
-filter.insert("item1");
-filter.insert("item2");
+filter.insert('item1');
+filter.insert('item2');
 
 // Check if items exist
-console.log(filter.contains("item1")); // true
-console.log(filter.contains("item2")); // true
-console.log(filter.contains("item3")); // false (or true with 1% probability)
+console.log(filter.contains('item1')); // true
+console.log(filter.contains('item2')); // true
+console.log(filter.contains('item3')); // false (or true with 1% probability)
 ```
 
 ### Count-Min Sketch
 
 ```typescript
-import { CountMinSketch } from "sketch-wasm";
+import { CountMinSketch } from 'sketch-wasm';
 
 // Create a Count-Min Sketch with width=10000 and depth=5
 const sketch = new CountMinSketch(10000, 5);
 
 // Increment counters for items
-sketch.increment("item1");
-sketch.increment("item1");
-sketch.increment("item2");
+sketch.increment('item1');
+sketch.increment('item1');
+sketch.increment('item2');
 
 // Get frequency estimates
-console.log(sketch.estimate("item1")); // ~2
-console.log(sketch.estimate("item2")); // ~1
-console.log(sketch.estimate("item3")); // 0
+console.log(sketch.estimate('item1')); // ~2
+console.log(sketch.estimate('item2')); // ~1
+console.log(sketch.estimate('item3')); // 0
 
 // Clear all counters
 sketch.clear();
@@ -100,22 +100,22 @@ sketch.clear();
 ### HyperLogLog
 
 ```typescript
-import { HyperLogLog } from "sketch-wasm";
+import { HyperLogLog } from 'sketch-wasm';
 
 // Create a HyperLogLog with precision=14 (2^14 = 16384 registers)
 const hll = new HyperLogLog(14);
 
 // Add items
-hll.add("item1");
-hll.add("item2");
-hll.add("item1"); // Duplicates are automatically handled
+hll.add('item1');
+hll.add('item2');
+hll.add('item1'); // Duplicates are automatically handled
 
 // Get cardinality estimate
 console.log(hll.count()); // ~2
 
 // Merge two HyperLogLog instances
 const hll2 = new HyperLogLog(14);
-hll2.add("item3");
+hll2.add('item3');
 hll.merge(hll2);
 console.log(hll.count()); // ~3
 ```
@@ -123,20 +123,20 @@ console.log(hll.count()); // ~3
 ### Heavy Keeper (Approximate Top-K)
 
 ```typescript
-import { HeavyKeeper } from "sketch-wasm";
+import { HeavyKeeper } from 'sketch-wasm';
 
 // Create a Heavy Keeper with width=1000, depth=5, k=10, decay=0.9
 const hk = new HeavyKeeper(1000, 5, 10, 0.9);
 
 // Add items
 for (let i = 0; i < 100; i++) {
-  hk.add("frequent");
+  hk.add('frequent');
 }
 for (let i = 0; i < 50; i++) {
-  hk.add("medium");
+  hk.add('medium');
 }
 for (let i = 0; i < 10; i++) {
-  hk.add("rare");
+  hk.add('rare');
 }
 
 // Get top-k items
@@ -149,5 +149,5 @@ console.log(topK);
 // ]
 
 // Query specific item frequency
-console.log(hk.query("frequent")); // ~100
+console.log(hk.query('frequent')); // ~100
 ```

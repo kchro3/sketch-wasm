@@ -1,13 +1,17 @@
 const { performance } = require('perf_hooks');
 const { BloomFilter, CountMinSketch, HyperLogLog, HeavyKeeper } = require('../pkg/sketch_wasm');
-const { BloomFilter: JSBloomFilter, CountMinSketch: JSCountMinSketch, HyperLogLog: JSHyperLogLog } = require('bloom-filters');
+const {
+  BloomFilter: JSBloomFilter,
+  CountMinSketch: JSCountMinSketch,
+  HyperLogLog: JSHyperLogLog,
+} = require('bloom-filters');
 
 function measureMemory() {
   const used = process.memoryUsage();
   return {
-    heapUsed: Math.round(used.heapUsed / 1024 / 1024 * 100) / 100,
-    heapTotal: Math.round(used.heapTotal / 1024 / 1024 * 100) / 100,
-    external: Math.round(used.external / 1024 / 1024 * 100) / 100,
+    heapUsed: Math.round((used.heapUsed / 1024 / 1024) * 100) / 100,
+    heapTotal: Math.round((used.heapTotal / 1024 / 1024) * 100) / 100,
+    external: Math.round((used.external / 1024 / 1024) * 100) / 100,
   };
 }
 
@@ -35,7 +39,7 @@ async function runBenchmarks() {
   // Warm up both filters to ensure fair comparison
   console.log('Warming up filters...');
   const warmupItems = Array.from({ length: 1000 }, (_, i) => `warmup${i}`);
-  warmupItems.forEach(item => {
+  warmupItems.forEach((item) => {
     wasmFilter.insert(item);
     jsFilter.add(item);
   });
@@ -54,7 +58,7 @@ async function runBenchmarks() {
 
   // WASM insert benchmark
   const wasmStart = performance.now();
-  items.forEach(item => wasmFilter.insert(item));
+  items.forEach((item) => wasmFilter.insert(item));
   const wasmInsertTime = performance.now() - wasmStart;
 
   // Create fresh JS filter for fair comparison
@@ -62,7 +66,7 @@ async function runBenchmarks() {
 
   // JS insert benchmark
   const jsStart = performance.now();
-  items.forEach(item => jsFilterFresh.add(item));
+  items.forEach((item) => jsFilterFresh.add(item));
   const jsInsertTime = performance.now() - jsStart;
 
   console.log('\nInsert Performance (100,000 items):');
@@ -88,7 +92,7 @@ async function runBenchmarks() {
   // WASM lookup
   const wasmLookupStart = performance.now();
   let wasmHits = 0;
-  mixedLookupItems.forEach(item => {
+  mixedLookupItems.forEach((item) => {
     if (wasmFilter.contains(item)) wasmHits++;
   });
   const wasmLookupTime = performance.now() - wasmLookupStart;
@@ -96,7 +100,7 @@ async function runBenchmarks() {
   // JS lookup
   const jsLookupStart = performance.now();
   let jsHits = 0;
-  mixedLookupItems.forEach(item => {
+  mixedLookupItems.forEach((item) => {
     if (jsFilterFresh.has(item)) jsHits++;
   });
   const jsLookupTime = performance.now() - jsLookupStart;
@@ -109,7 +113,9 @@ async function runBenchmarks() {
   // Verify both filters have similar behavior
   console.log('\nFilter Accuracy Check:');
   console.log(`WASM hits: ${wasmHits}, JS hits: ${jsHits}`);
-  console.log(`Hit difference: ${Math.abs(wasmHits - jsHits)} (should be small for fair comparison)`);
+  console.log(
+    `Hit difference: ${Math.abs(wasmHits - jsHits)} (should be small for fair comparison)`
+  );
 
   // Count-Min Sketch benchmarks
   console.log('\nCount-Min Sketch Benchmarks:');
@@ -117,7 +123,7 @@ async function runBenchmarks() {
 
   // Initialize Count-Min Sketch with parameters that match WASM dimensions
   const errorRate = 0.00027; // 0.027% error rate to match WASM width of 10000
-  const accuracy = 0.9933;   // 99.33% accuracy to match WASM depth of 5
+  const accuracy = 0.9933; // 99.33% accuracy to match WASM depth of 5
   const wasmCms = new CountMinSketch(10000, 5);
   const jsCms = JSCountMinSketch.create(errorRate, accuracy);
 
@@ -154,12 +160,12 @@ async function runBenchmarks() {
 
   // WASM Increment performance test
   const wasmCmsStart = performance.now();
-  frequencyItems.forEach(item => wasmCms.increment(item));
+  frequencyItems.forEach((item) => wasmCms.increment(item));
   const wasmCmsIncrementTime = performance.now() - wasmCmsStart;
 
   // JS Increment performance test
   const jsCmsStart = performance.now();
-  frequencyItems.forEach(item => jsCms.update(item));
+  frequencyItems.forEach((item) => jsCms.update(item));
   const jsCmsIncrementTime = performance.now() - jsCmsStart;
 
   console.log('\nIncrement Performance:');
@@ -180,7 +186,7 @@ async function runBenchmarks() {
   // WASM Estimate
   const wasmCmsEstimateStart = performance.now();
   let wasmTotalEstimate = 0;
-  estimateItems.forEach(item => {
+  estimateItems.forEach((item) => {
     wasmTotalEstimate += wasmCms.estimate(item);
   });
   const wasmCmsEstimateTime = performance.now() - wasmCmsEstimateStart;
@@ -188,7 +194,7 @@ async function runBenchmarks() {
   // JS Estimate
   const jsCmsEstimateStart = performance.now();
   let jsTotalEstimate = 0;
-  estimateItems.forEach(item => {
+  estimateItems.forEach((item) => {
     jsTotalEstimate += jsCms.count(item);
   });
   const jsCmsEstimateTime = performance.now() - jsCmsEstimateStart;
@@ -208,7 +214,9 @@ async function runBenchmarks() {
   console.log('\nCMS Accuracy Check:');
   console.log(`WASM total estimate: ${wasmTotalEstimate}`);
   console.log(`JS total estimate: ${jsTotalEstimate}`);
-  console.log(`Estimate difference: ${Math.abs(wasmTotalEstimate - jsTotalEstimate)} (should be small for fair comparison)`);
+  console.log(
+    `Estimate difference: ${Math.abs(wasmTotalEstimate - jsTotalEstimate)} (should be small for fair comparison)`
+  );
 
   // HyperLogLog benchmarks
   console.log('\nHyperLogLog Benchmarks:');
@@ -244,12 +252,12 @@ async function runBenchmarks() {
 
   // WASM Add performance test
   const wasmHllStart = performance.now();
-  cardinalityItems.forEach(item => wasmHll.add(item));
+  cardinalityItems.forEach((item) => wasmHll.add(item));
   const wasmHllAddTime = performance.now() - wasmHllStart;
 
   // JS Add performance test (using 'update' method for bloom-filters library)
   const jsHllStart = performance.now();
-  cardinalityItems.forEach(item => jsHll.update(item));
+  cardinalityItems.forEach((item) => jsHll.update(item));
   const jsHllAddTime = performance.now() - jsHllStart;
 
   console.log('\nAdd Performance:');
@@ -283,13 +291,21 @@ async function runBenchmarks() {
   console.log(`Actual cardinality: ${uniqueItems.size}`);
   console.log(`WASM estimate: ${wasmEstimate.toFixed(2)}`);
   console.log(`JS estimate: ${jsEstimate.toFixed(2)}`);
-  console.log(`WASM error: ${(Math.abs(wasmEstimate - uniqueItems.size) / uniqueItems.size * 100).toFixed(2)}%`);
-  console.log(`JS error: ${(Math.abs(jsEstimate - uniqueItems.size) / uniqueItems.size * 100).toFixed(2)}%`);
+  console.log(
+    `WASM error: ${((Math.abs(wasmEstimate - uniqueItems.size) / uniqueItems.size) * 100).toFixed(2)}%`
+  );
+  console.log(
+    `JS error: ${((Math.abs(jsEstimate - uniqueItems.size) / uniqueItems.size) * 100).toFixed(2)}%`
+  );
 
   // Compare with Bloom Filter memory usage
   console.log('\nMemory Usage Comparison:');
-  console.log(`Bloom Filter (1M items, 1% error): ${(wasmFilter.bits?.length / 8 / 1024).toFixed(2)}KB`);
-  console.log(`HyperLogLog (precision ${precision}): ${((1 << precision) * 4 / 1024).toFixed(2)}KB`);
+  console.log(
+    `Bloom Filter (1M items, 1% error): ${(wasmFilter.bits?.length / 8 / 1024).toFixed(2)}KB`
+  );
+  console.log(
+    `HyperLogLog (precision ${precision}): ${(((1 << precision) * 4) / 1024).toFixed(2)}KB`
+  );
 
   // Note about benchmark fairness
   console.log('\nBenchmark Notes:');
@@ -319,15 +335,19 @@ async function runBenchmarks() {
       this.depth = depth;
       this.k = k;
       this.decay = decay;
-      this.counters = Array(depth).fill().map(() =>
-        Array(width).fill().map(() => ({ item: '', count: 0 }))
-      );
+      this.counters = Array(depth)
+        .fill()
+        .map(() =>
+          Array(width)
+            .fill()
+            .map(() => ({ item: '', count: 0 }))
+        );
     }
 
     hash(item, seed) {
       let hash = seed;
       for (let i = 0; i < item.length; i++) {
-        hash = ((hash * 31) + item.charCodeAt(i)) >>> 0;
+        hash = (hash * 31 + item.charCodeAt(i)) >>> 0;
       }
       return hash % this.width;
     }
@@ -427,12 +447,12 @@ async function runBenchmarks() {
 
   // WASM Add performance test
   const wasmHkStart = performance.now();
-  hkFrequencyItems.forEach(item => wasmHk.add(item));
+  hkFrequencyItems.forEach((item) => wasmHk.add(item));
   const wasmHkAddTime = performance.now() - wasmHkStart;
 
   // JS Add performance test
   const jsHkStart = performance.now();
-  hkFrequencyItems.forEach(item => jsHk.add(item));
+  hkFrequencyItems.forEach((item) => jsHk.add(item));
   const jsHkAddTime = performance.now() - jsHkStart;
 
   console.log('\nAdd Performance:');
@@ -463,13 +483,15 @@ async function runBenchmarks() {
 
   // Verify both implementations have similar behavior
   console.log('\nHK Accuracy Check:');
-  console.log('WASM Top-K:', wasmTopK.map(item => `${item.item}: ${item.count}`).join(', '));
+  console.log('WASM Top-K:', wasmTopK.map((item) => `${item.item}: ${item.count}`).join(', '));
   console.log('JS Top-K:', jsTopK.map(([item, count]) => `${item}: ${count}`).join(', '));
   console.log('Note: Both implementations should track similar top items');
 
   // Compare memory usage
   console.log('\nMemory Usage Comparison:');
-  console.log(`Heavy Keeper (width=${width}, depth=${depth}): ${(width * depth * 8 / 1024).toFixed(2)}KB`);
+  console.log(
+    `Heavy Keeper (width=${width}, depth=${depth}): ${((width * depth * 8) / 1024).toFixed(2)}KB`
+  );
 
   // Note about benchmark fairness
   console.log('\nBenchmark Notes:');

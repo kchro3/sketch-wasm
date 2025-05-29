@@ -1,4 +1,4 @@
-import { TextDecoder, TextEncoder } from "util";
+import { TextDecoder, TextEncoder } from 'util';
 
 // Add TextEncoder and TextDecoder to the global scope
 global.TextEncoder = TextEncoder;

@@ -1,34 +1,34 @@
-import { CountMinSketch } from "../pkg";
+import { CountMinSketch } from '../pkg';
 
-describe("CountMinSketch WebAssembly Bindings", () => {
-  test("should create a new CountMinSketch with correct parameters", () => {
+describe('CountMinSketch WebAssembly Bindings', () => {
+  test('should create a new CountMinSketch with correct parameters', () => {
     const cms = new CountMinSketch(1000, 5);
     expect(cms).toBeDefined();
   });
 
-  test("should increment and estimate counts correctly", () => {
+  test('should increment and estimate counts correctly', () => {
     const cms = new CountMinSketch(1000, 5);
-    cms.increment("test");
-    cms.increment("test");
-    expect(cms.estimate("test")).toBe(2);
-    expect(cms.estimate("not_present")).toBe(0);
+    cms.increment('test');
+    cms.increment('test');
+    expect(cms.estimate('test')).toBe(2);
+    expect(cms.estimate('not_present')).toBe(0);
   });
 
-  test("should handle empty strings", () => {
+  test('should handle empty strings', () => {
     const cms = new CountMinSketch(1000, 5);
-    cms.increment("");
-    expect(cms.estimate("")).toBe(1);
+    cms.increment('');
+    expect(cms.estimate('')).toBe(1);
   });
 
-  test("should handle multiple increments of the same item", () => {
+  test('should handle multiple increments of the same item', () => {
     const cms = new CountMinSketch(1000, 5);
     for (let i = 0; i < 100; i++) {
-      cms.increment("frequent");
+      cms.increment('frequent');
     }
-    expect(cms.estimate("frequent")).toBe(100);
+    expect(cms.estimate('frequent')).toBe(100);
   });
 
-  test("should maintain accuracy within bounds for known frequencies", () => {
+  test('should maintain accuracy within bounds for known frequencies', () => {
     const cms = new CountMinSketch(10000, 5);
     const frequencies = new Map<string, number>();
 
@@ -58,40 +58,40 @@ describe("CountMinSketch WebAssembly Bindings", () => {
     expect(maxError).toBeLessThanOrEqual(20); // Maximum error should be bounded
   });
 
-  test("should handle large strings", () => {
+  test('should handle large strings', () => {
     const cms = new CountMinSketch(1000, 5);
     const longString =
-      "very_long_string_that_might_cause_issues_with_hashing_and_should_be_handled_properly";
+      'very_long_string_that_might_cause_issues_with_hashing_and_should_be_handled_properly';
     cms.increment(longString);
     expect(cms.estimate(longString)).toBe(1);
   });
 
-  test("should handle special characters", () => {
+  test('should handle special characters', () => {
     const cms = new CountMinSketch(1000, 5);
-    const specialString = "!@#$%^&*()_+{}|:\"<>?~`-=[]\\;',./";
+    const specialString = '!@#$%^&*()_+{}|:"<>?~`-=[]\\;\',./';
     cms.increment(specialString);
     expect(cms.estimate(specialString)).toBe(1);
   });
 
-  test("should handle unicode characters", () => {
+  test('should handle unicode characters', () => {
     const cms = new CountMinSketch(1000, 5);
-    const unicodeString = "你好，世界！🌍";
+    const unicodeString = '你好，世界！🌍';
     cms.increment(unicodeString);
     expect(cms.estimate(unicodeString)).toBe(1);
   });
 
-  test("should handle clear operation", () => {
+  test('should handle clear operation', () => {
     const cms = new CountMinSketch(1000, 5);
-    cms.increment("test");
-    cms.increment("test");
-    expect(cms.estimate("test")).toBe(2);
+    cms.increment('test');
+    cms.increment('test');
+    expect(cms.estimate('test')).toBe(2);
     cms.clear();
-    expect(cms.estimate("test")).toBe(0);
+    expect(cms.estimate('test')).toBe(0);
   });
 
-  test("should handle multiple items with different frequencies", () => {
+  test('should handle multiple items with different frequencies', () => {
     const cms = new CountMinSketch(1000, 5);
-    const items = ["rare", "common", "very_common"];
+    const items = ['rare', 'common', 'very_common'];
     const frequencies = [1, 10, 100];
 
     items.forEach((item, i) => {
@@ -107,7 +107,7 @@ describe("CountMinSketch WebAssembly Bindings", () => {
     });
   });
 
-  test("should handle hash collisions gracefully", () => {
+  test('should handle hash collisions gracefully', () => {
     const cms = new CountMinSketch(100, 5); // Small width to force collisions
     const items = Array.from({ length: 1000 }, (_, i) => `item_${i}`);
 
@@ -120,9 +120,9 @@ describe("CountMinSketch WebAssembly Bindings", () => {
     });
   });
 
-  test("should maintain relative frequency relationships", () => {
+  test('should maintain relative frequency relationships', () => {
     const cms = new CountMinSketch(1000, 5);
-    const items = ["A", "B", "C"];
+    const items = ['A', 'B', 'C'];
     const frequencies = [10, 20, 30];
 
     items.forEach((item, i) => {

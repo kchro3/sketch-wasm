@@ -1,15 +1,15 @@
-import { HyperLogLog } from "../pkg";
+import { HyperLogLog } from '../pkg';
 // import { HyperLogLog } from "../src/hyperloglog";
 
-describe("HyperLogLog", () => {
-  test("constructor should throw error for invalid precision", () => {
+describe('HyperLogLog', () => {
+  test('constructor should throw error for invalid precision', () => {
     expect(() => new HyperLogLog(3)).toThrow();
     expect(() => new HyperLogLog(17)).toThrow();
   });
 
-  test("should maintain correct count for small sets", () => {
+  test('should maintain correct count for small sets', () => {
     const hll = new HyperLogLog(14);
-    const items = ["a", "b", "c", "d", "e"];
+    const items = ['a', 'b', 'c', 'd', 'e'];
 
     items.forEach((item) => hll.add(item));
     const estimate = hll.count();
@@ -18,9 +18,9 @@ describe("HyperLogLog", () => {
     expect(Math.abs(estimate - items.length) / items.length).toBeLessThan(0.2);
   });
 
-  test("should handle duplicate items correctly", () => {
+  test('should handle duplicate items correctly', () => {
     const hll = new HyperLogLog(14);
-    const item = "test";
+    const item = 'test';
 
     // Add the same item multiple times
     for (let i = 0; i < 100; i++) {
@@ -31,7 +31,7 @@ describe("HyperLogLog", () => {
     expect(estimate).toBeCloseTo(1, 0);
   });
 
-  test("should merge two HyperLogLog instances correctly", () => {
+  test('should merge two HyperLogLog instances correctly', () => {
     const hll1 = new HyperLogLog(14);
     const hll2 = new HyperLogLog(14);
 
@@ -55,14 +55,14 @@ describe("HyperLogLog", () => {
     expect(error).toBeLessThan(0.05);
   });
 
-  test("should throw error when merging with different precision", () => {
+  test('should throw error when merging with different precision', () => {
     const hll1 = new HyperLogLog(14);
     const hll2 = new HyperLogLog(15);
 
     expect(() => hll1.merge(hll2)).toThrow();
   });
 
-  test("should clear registers correctly", () => {
+  test('should clear registers correctly', () => {
     const hll = new HyperLogLog(14);
 
     // Add some items
@@ -75,7 +75,7 @@ describe("HyperLogLog", () => {
     expect(hll.count()).toBe(0);
   });
 
-  test("should handle large sets with reasonable accuracy", () => {
+  test('should handle large sets with reasonable accuracy', () => {
     const hll = new HyperLogLog(14);
     const size = 100000;
 
@@ -91,7 +91,7 @@ describe("HyperLogLog", () => {
     expect(error).toBeLessThan(0.05);
   });
 
-  test("should maintain consistent estimates for same input", () => {
+  test('should maintain consistent estimates for same input', () => {
     const hll = new HyperLogLog(14);
     const items = Array.from({ length: 1000 }, (_, i) => `item-${i}`);
 
@@ -104,19 +104,18 @@ describe("HyperLogLog", () => {
     const estimate2 = hll.count();
 
     // Estimates should be very close (within 5%)
-    const relativeError =
-      Math.abs(estimate1 - estimate2) / Math.max(estimate1, estimate2);
+    const relativeError = Math.abs(estimate1 - estimate2) / Math.max(estimate1, estimate2);
     expect(relativeError).toBeLessThan(0.05);
   });
 
-  test("should handle empty set correctly", () => {
+  test('should handle empty set correctly', () => {
     const hll = new HyperLogLog(14);
     expect(hll.count()).toBe(0);
   });
 
-  test("should handle single item correctly", () => {
+  test('should handle single item correctly', () => {
     const hll = new HyperLogLog(14);
-    hll.add("test");
+    hll.add('test');
     expect(hll.count()).toBe(1);
   });
 });
