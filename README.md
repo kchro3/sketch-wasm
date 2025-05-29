@@ -1,5 +1,11 @@
 # sketch-wasm
 
+[![npm version](https://img.shields.io/npm/v/sketch-wasm.svg)](https://www.npmjs.com/package/sketch-wasm)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-Supported-purple.svg)](https://webassembly.org/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/jeffhara/sketch-wasm/ci.yml?branch=main)](https://github.com/jeffhara/sketch-wasm/actions)
+
 A high-performance WebAssembly implementation of probabilistic data structures for TypeScript/Node.js applications. This library provides efficient implementations of:
 
 - Bloom Filters
