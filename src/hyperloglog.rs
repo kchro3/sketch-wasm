@@ -22,7 +22,7 @@ impl HyperLogLog {
   pub fn new(precision: Option<u8>) -> Result<HyperLogLog, JsValue> {
     let p = precision.unwrap_or(14);
 
-    if p < 4 || p > 16 {
+    if !(4..=16).contains(&p) {
       return Err(JsValue::from_str("Precision must be between 4 and 16"));
     }
 
@@ -49,11 +49,11 @@ impl HyperLogLog {
     for byte in value.bytes() {
       let mut k1 = byte as u32;
       k1 = k1.wrapping_mul(c1);
-      k1 = (k1 << 15) | (k1 >> 17);
+      k1 = k1.rotate_left(15);
       k1 = k1.wrapping_mul(c2);
 
       h1 ^= k1;
-      h1 = (h1 << 13) | (h1 >> 19);
+      h1 = h1.rotate_left(13);
       h1 = h1.wrapping_mul(5).wrapping_add(0xe6546b64);
     }
 
