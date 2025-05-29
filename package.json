@@ -1,6 +1,6 @@
 {
   "name": "sketch-wasm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Probabilistic data structures for TypeScript/Node.js via WebAssembly",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
