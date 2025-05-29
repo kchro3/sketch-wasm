@@ -4,8 +4,14 @@
   "description": "Probabilistic data structures for TypeScript/Node.js via WebAssembly",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "pkg"
+  ],
   "scripts": {
     "build": "wasm-pack build --target nodejs && tsc",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -23,6 +29,20 @@
   ],
   "author": "kchro3",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kchro3/sketch-wasm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kchro3/sketch-wasm/issues"
+  },
+  "homepage": "https://github.com/kchro3/sketch-wasm#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
